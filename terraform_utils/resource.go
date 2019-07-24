@@ -114,11 +114,19 @@ func (r *Resource) ConvertTFstate() {
 	for key := range attributes {
 		blockName := strings.Split(key, ".")[0]
 
-		if _, exist := r.Item[blockName]; exist {
-			continue
+		if r.Provider == "aws" && blockName == "tags" && key != "tags.%" {
+			if _, exist := r.Item[blockName]; ! exist {
+				r.Item[blockName] = map[string]string{}
+			}
+			tags := r.Item[blockName].(map[string]string)
+			tagName := key[len(blockName) + 1:]
+			tags[tagName] = r.InstanceState.Attributes[key]
+		} else {
+			if _, exist := r.Item[blockName]; exist {
+				continue
+			}
+			r.Item[blockName] = flatmap.Expand(attributes, blockName)
 		}
-
-		r.Item[blockName] = flatmap.Expand(attributes, blockName)
 	}
 	// add Additional Fields to resource
 	for key, value := range r.AdditionalFields {
